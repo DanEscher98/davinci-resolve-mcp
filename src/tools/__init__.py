@@ -24,17 +24,22 @@ from typing import Optional
 
 logger = logging.getLogger("davinci-resolve-mcp.tools")
 
-# Tool category modules (to be implemented in Phase 2)
+# Tool category modules
 TOOL_CATEGORIES = {
     'core': 'tools.core',
     'project': 'tools.project',
+    'project_advanced': 'tools.project_advanced',
     'timeline': 'tools.timeline',
     'timeline_advanced': 'tools.timeline_advanced',
+    'timeline_operations': 'tools.timeline_operations',
     'timelineitem_advanced': 'tools.timelineitem_advanced',
     'media': 'tools.media',
     'mediapoolitem_advanced': 'tools.mediapoolitem_advanced',
+    'mediapool_advanced': 'tools.mediapool_advanced',
     'color': 'tools.color',
+    'colorgroup_operations': 'tools.colorgroup_operations',
     'delivery': 'tools.delivery',
+    'render_settings': 'tools.render_settings',
     'fusion': 'tools.fusion',
     'fairlight': 'tools.fairlight',
     'media_storage': 'tools.media_storage',
