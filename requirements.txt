@@ -10,5 +10,8 @@ psutil>=5.9.0
 # JSON-RPC Server for API
 jsonrpcserver>=5.0.0
 
+# Configuration management
+PyYAML>=6.0
+
 # Git repository dependencies
 git+https://github.com/modelcontextprotocol/python-sdk.git 
