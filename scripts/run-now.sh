@@ -7,8 +7,16 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Detect operating system
+OS_TYPE="$(uname -s)"
+case "$OS_TYPE" in
+    Linux*)  PLATFORM="linux";;
+    Darwin*) PLATFORM="darwin";;
+    *)       PLATFORM="unknown";;
+esac
+
 # Get the directory where this script is located
-SCRIPT_PATH="$(readlink -f "$0")"
+SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 VENV_DIR="$ROOT_DIR/venv"
@@ -27,15 +35,25 @@ fi
 echo -e "${YELLOW}Installing dependencies from requirements.txt...${NC}"
 "$VENV_DIR/bin/pip" install -r "$ROOT_DIR/requirements.txt"
 
-# Source environment variables from .zshrc if they exist
-if grep -q "RESOLVE_SCRIPT_API" "$HOME/.zshrc"; then
-    echo -e "${YELLOW}Sourcing environment variables from .zshrc...${NC}"
-    source "$HOME/.zshrc"
-else
-    echo -e "${YELLOW}Setting environment variables...${NC}"
-    export RESOLVE_SCRIPT_API="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
-    export RESOLVE_SCRIPT_LIB="/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
+# Set platform-specific environment variables
+echo -e "${YELLOW}Setting environment variables for $PLATFORM...${NC}"
+if [ "$PLATFORM" = "linux" ]; then
+    export RESOLVE_SCRIPT_API="/opt/resolve/Developer/Scripting"
+    export RESOLVE_SCRIPT_LIB="/opt/resolve/libs/Fusion/fusionscript.so"
     export PYTHONPATH="$PYTHONPATH:$RESOLVE_SCRIPT_API/Modules/"
+elif [ "$PLATFORM" = "darwin" ]; then
+    # Source environment variables from .zshrc if they exist
+    if grep -q "RESOLVE_SCRIPT_API" "$HOME/.zshrc" 2>/dev/null; then
+        echo -e "${YELLOW}Sourcing environment variables from .zshrc...${NC}"
+        source "$HOME/.zshrc"
+    else
+        export RESOLVE_SCRIPT_API="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
+        export RESOLVE_SCRIPT_LIB="/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
+        export PYTHONPATH="$PYTHONPATH:$RESOLVE_SCRIPT_API/Modules/"
+    fi
+else
+    echo -e "${RED}Unsupported platform: $OS_TYPE${NC}"
+    exit 1
 fi
 
 # Make the server script executable
@@ -47,15 +65,26 @@ else
     exit 1
 fi
 
+# Function to check if DaVinci Resolve is running (platform-aware)
+check_resolve_running() {
+    if [ "$PLATFORM" = "linux" ]; then
+        # On Linux, check for the resolve process specifically (avoid matching systemd-resolved)
+        pgrep -f "/opt/resolve/bin/resolve" > /dev/null 2>&1 || pgrep -x "resolve" > /dev/null 2>&1
+    else
+        # On macOS, use the original method
+        ps -ef | grep -i "[D]aVinci Resolve" > /dev/null 2>&1
+    fi
+}
+
 # Check if DaVinci Resolve is running
-if ps -ef | grep -i "[D]aVinci Resolve" > /dev/null; then
+if check_resolve_running; then
     echo -e "${GREEN}✓ DaVinci Resolve is running${NC}"
 else
     echo -e "${RED}✗ DaVinci Resolve is not running${NC}"
     echo -e "${YELLOW}Please start DaVinci Resolve before continuing${NC}"
     echo -e "${YELLOW}Waiting 10 seconds for you to start DaVinci Resolve...${NC}"
     sleep 10
-    if ! ps -ef | grep -i "[D]aVinci Resolve" > /dev/null; then
+    if ! check_resolve_running; then
         echo -e "${RED}DaVinci Resolve still not running. Please start it manually.${NC}"
         echo -e "${YELLOW}You can run this script again after starting DaVinci Resolve.${NC}"
         exit 1
